@@ -13,6 +13,9 @@ def newPost(request):
 
     return HttpResponse('post created')
 
+@api_view(['DELETE'])
+def deletePost(request, id):
+    return HttpResponse('post deleted')
 
 
 @api_view(['GET'])
