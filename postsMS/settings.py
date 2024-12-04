@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'rest_framework',
     'posts.apps.PostsConfig',
 ]
 
@@ -78,7 +79,11 @@ WSGI_APPLICATION = 'postsMS.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': BASE_DIR / 'db.postgres',
+        'NAME': 'postsms',
+        'USER': 'postsmsuser',
+        'PASSWORD': 'postsmspassword',
+        'HOST': 'localhost',
+        'PORT': '5432',
     }
 }
 
