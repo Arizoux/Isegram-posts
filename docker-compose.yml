@@ -1,0 +1,37 @@
+name: post-microservice
+
+services:
+  posts_db:
+    image: postgres:latest
+    container_name: posts_db
+    restart: always
+    environment:
+      POSTGRES_USER: postsuser
+      POSTGRES_PASSWORD: postspw
+      POSTGRES_DB: postsdb
+      POSTGRES_HOST: posts_db
+      POSTGRES_PORT: 5443
+
+    ports:
+      - "5443:5443"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  posts_microservice:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: posts_ms
+    ports:
+      - "8000:8000"
+    depends_on:
+      - posts_db
+    environment:
+      DATABASE_URL: "postgresql://postsuser:postspw@posts_db:5443/postsdb"
+
+networks:
+  app_network:
+    external: true
+
+volumes:
+  postgres_data: {}

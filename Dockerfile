@@ -4,8 +4,18 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
-COPY requirements.txt /app/
+RUN apt-get update && \
+    apt-get install -y \
+    postgresql-client \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip install -r requirements.txt
+COPY requirements.txt .
 
-COPY . /app/
+RUN pip install --upgrade pip && \
+    pip install -r requirements.txt
+
+COPY . .
+
+EXPOSE 8000
+
+CMD #to be figured out
