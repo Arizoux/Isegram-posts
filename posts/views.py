@@ -24,8 +24,25 @@ def apiHandler(request, id):
 def newPost(request):
     body_unicode = request.body.decode('utf-8')
     body = json.loads(body_unicode)
-    #TODO no media and need to clarify how the json will look like
-    Post.objects.create(caption=body['caption'], username=body['username'], created_at=datetime.now(), updated_at=datetime.now())
+    media_urls = body['media_urls']
+    post_response = None
+
+    payload = {
+        "media_urls": media_urls
+    }
+
+    try:
+        post_response = requests.post("http://127.0.0.1:8000/media/", json=payload, timeout=5)
+        post_response.raise_for_status()
+        media = post_response.json()
+
+    except requests.exceptions.HTTPError as e:
+        return HttpResponse({"error": str(e)}, status=post_response.status_code)
+    except requests.exceptions.RequestException as e:
+        return HttpResponse({"error": str(e)}, status=post_response.status_code)
+
+
+    Post.objects.create(caption=body['caption'], username=body['username'], created_at=datetime.now(), updated_at=datetime.now(), media=media)
 
     return HttpResponse('post created')
 
@@ -51,14 +68,10 @@ def updatePost(request, id):
 
     for key, value in body.items():
         if key == "media":
-            old_media = post.media
             current_media = post.media or []
             current_media.update(value)
             setattr(post, key, current_media)
             updated_fields.append(key)
-            #removed_fields = list(set(old_media - current_media)) falls media diese infos haben will, sonst einfach current_media verschicken
-            #added_fields = list(set(current_media) - set(old_media))
-
 
         elif hasattr(post, key):
             setattr(post, key, value)
@@ -69,14 +82,13 @@ def updatePost(request, id):
     if updated_fields:
         post.save(update_fields=updated_fields)
 
-    #TODO updated fields should also be returned
-    return HttpResponse('post updated', status=200)
+    return JsonResponse(updated_fields, status=200)
 
 
 def getPosts(request, id):
     post = get_object_or_404(Post, id=id)
 
-    #TODO get media urls with post.media ids
+    media_urls = []
 
     postData = {
         'id': post.id,
@@ -84,7 +96,7 @@ def getPosts(request, id):
         'username': post.username,
         'created_at': post.created_at,
         'updated_at': post.updated_at,
-        'media': post.media,
+        'media': media_urls,
     }
 
     return JsonResponse(postData)
