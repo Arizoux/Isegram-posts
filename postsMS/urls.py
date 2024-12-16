@@ -21,6 +21,6 @@ from posts import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('posts/', views.newPost),
-    path('posts/<uuid:id>', views.apiHandler),
+    path('/posts', views.newPost),
+    path('/posts/<uuid:id>', views.apiHandler),
 ]

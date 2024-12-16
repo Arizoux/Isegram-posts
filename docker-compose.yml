@@ -1,3 +1,5 @@
+version: '3.8'
+
 name: post-microservice
 
 services:
@@ -14,6 +16,8 @@ services:
 
     ports:
       - "5443:5443"
+    networks:
+      - app_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -28,10 +32,12 @@ services:
       - posts_db
     environment:
       DATABASE_URL: "postgresql://postsuser:postspw@posts_db:5443/postsdb"
+    networks:
+      - app_network
 
 networks:
   app_network:
-    external: true
+    driver: bridge
 
 volumes:
   postgres_data: {}
