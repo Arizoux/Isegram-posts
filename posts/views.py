@@ -1,4 +1,5 @@
 from datetime import datetime
+from http.client import responses
 
 from django.shortcuts import get_object_or_404
 import json, requests
@@ -24,7 +25,7 @@ def apiHandler(request, id):
 def newPost(request):
     body_unicode = request.body.decode('utf-8')
     body = json.loads(body_unicode)
-    media_urls = body['media_urls']
+    media_urls = body['media_urls'] #muss noch auf variablennamen geeinigt werden
     post_response = None
 
     payload = {
@@ -68,8 +69,10 @@ def updatePost(request, id):
 
     for key, value in body.items():
         if key == "media":
-            current_media = post.media or []
+            current_media = post.media
             current_media.update(value)
+            #TODO send to media
+
             setattr(post, key, current_media)
             updated_fields.append(key)
 
@@ -88,7 +91,26 @@ def updatePost(request, id):
 def getPosts(request, id):
     post = get_object_or_404(Post, id=id)
 
-    media_urls = []
+    response = requests.get(f"http://127.0.0.1:8000/media/{post.id}")
+
+    if response.status_code == 400:
+        return HttpResponse({"error": "Bad request: invalid ID"}, status=400)
+
+    if response.status_code == 404:
+        postData = {
+            'id': post.id,
+            'caption': post.caption,
+            'username': post.username,
+            'created_at': post.created_at,
+            'updated_at': post.updated_at,
+            'media': [],
+        }
+        return JsonResponse(postData, status=204)
+
+    if response.status_code == 500:
+        return HttpResponse({"error": "Internal Server Error"}, status=500)
+
+    media_urls = response.json()
 
     postData = {
         'id': post.id,
@@ -99,4 +121,4 @@ def getPosts(request, id):
         'media': media_urls,
     }
 
-    return JsonResponse(postData)
+    return JsonResponse(postData, status=200)

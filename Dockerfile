@@ -18,4 +18,4 @@ COPY . .
 
 EXPOSE 8000
 
-CMD #to be figured out
+CMD ["python", "manage.py", "runserver"]
