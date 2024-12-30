@@ -33,7 +33,7 @@ def newPost(request):
     }
 
     try:
-        post_response = requests.post("/media", json=payload, timeout=5)
+        post_response = requests.post("/media/", json=payload, timeout=5)
         post_response.raise_for_status()
         media = post_response.json()
 
