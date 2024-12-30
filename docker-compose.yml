@@ -31,7 +31,11 @@ services:
     depends_on:
       - posts_db
     environment:
-      DATABASE_URL: "postgresql://postsuser:postspw@posts_db:5443/postsdb"
+      POSTGRES_USER: postsuser
+      POSTGRES_PASSWORD: postspw
+      POSTGRES_DB: postsdb
+      POSTGRES_HOST: posts_db
+      POSTGRES_PORT: 5443
     networks:
       - app_network
 

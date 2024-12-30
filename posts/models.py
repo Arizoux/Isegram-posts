@@ -4,7 +4,7 @@ from django.db import models
 
 class Post(models.Model):
     post_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    media = models.JSONField(type=list, blank=True)
+    media = models.JSONField(blank=True)
     caption = models.CharField(max_length=1000)
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True, editable=False)

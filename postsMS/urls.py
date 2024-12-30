@@ -21,7 +21,7 @@ from posts import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('/posts', views.newPost),
-    path('/posts/<uuid:id>', views.apiHandler),
-    path('/posts/users/<uuid:id>', views.manyPosts),
+    path('posts/', views.newPost),
+    path('posts/<uuid:id>/', views.apiHandler),
+    path('posts/users/<uuid:id>/', views.manyPosts),
 ]
