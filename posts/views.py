@@ -3,7 +3,7 @@ from http.client import responses
 
 from django.shortcuts import get_object_or_404
 import json, requests
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, Http404
 from rest_framework.decorators import api_view
 
 from posts.models import Post
@@ -25,15 +25,15 @@ def apiHandler(request, id):
 def newPost(request):
     body_unicode = request.body.decode('utf-8')
     body = json.loads(body_unicode)
-    media_urls = body['media_urls'] #muss noch auf variablennamen geeinigt werden
+    media_urls = body['media_urls'] #was kriege ich genau? json oder nur die url?
     post_response = None
 
     payload = {
-        "media_urls": media_urls
+        "media": media_urls
     }
 
     try:
-        post_response = requests.post("http://127.0.0.1:8000/media/", json=payload, timeout=5)
+        post_response = requests.post("/media", json=payload, timeout=5)
         post_response.raise_for_status()
         media = post_response.json()
 
@@ -42,25 +42,28 @@ def newPost(request):
     except requests.exceptions.RequestException as e:
         return HttpResponse({"error": str(e)}, status=post_response.status_code)
 
+    #kriege ich user_id vom frontend? von users?
+    post = Post.objects.create(caption=body['caption'], content=body['content'], username=body['username'],
+                        user_id=body['user_id'], created_at=datetime.now(), updated_at=datetime.now(), media=media)
 
-    Post.objects.create(caption=body['caption'], username=body['username'], created_at=datetime.now(), updated_at=datetime.now(), media=media)
-
-    return HttpResponse('post created')
-
+    return JsonResponse({'message': 'Post created', 'post_id': str(post.post_id)}, status=200)
 
 def deletePost(request, id):
-    post = get_object_or_404(Post, id=id)
-    #TODO delete the media aswell
-    response = requests.delete('yunus url', json=post.media)
+    try:
+        post = get_object_or_404(Post, id=id)
+        response = requests.delete(f'/media/{post.media}', json=post.media) #todo auf request einigen
 
-    #TODO
-    #if response.status_code != 200:   noch nicht sicher
+        if response.status_code == 500:
+            return HttpResponse("error: internal server error", status=500)
+
+        post.delete()
+        return HttpResponse('post deleted', status=200)
+
+    except Http404:
+        return HttpResponse({"error": "Post not found"}, status=404)
 
 
-    post.delete()
-    return HttpResponse('post deleted', status=204)
-
-
+#TODO !!!!!!!!
 def updatePost(request, id):
     post = get_object_or_404(Post, id=id)
     body_unicode = request.body.decode('utf-8')
@@ -89,36 +92,50 @@ def updatePost(request, id):
 
 
 def getPosts(request, id):
-    post = get_object_or_404(Post, id=id)
+    try:
+        post = get_object_or_404(Post, id=id)
 
-    response = requests.get(f"http://127.0.0.1:8000/media/{post.id}")
+        response = requests.get(f"/media/{post.media}")
 
-    if response.status_code == 400:
-        return HttpResponse({"error": "Bad request: invalid ID"}, status=400)
+        if response.status_code == 400:
+            return HttpResponse({"error": "Bad request, invalid media ID"}, status=400)
 
-    if response.status_code == 404:
+        if response.status_code == 404:
+            postData = {
+                'id': post.id,
+                'caption': post.caption,
+                'content': post.content,
+                'username': post.username,
+                'user_id': post.user_id,
+                'created_at': post.created_at,
+                'updated_at': post.updated_at,
+                'media': None,
+            }
+            return JsonResponse(postData, status=204)
+
+        if response.status_code == 500:
+            return HttpResponse({"error": "Internal Server Error"}, status=500)
+
+        media_urls = response.json()
+
         postData = {
-            'id': post.id,
+            'post_id': post.id,
             'caption': post.caption,
+            'content': post.content,
             'username': post.username,
+            'user_id': post.user_id,
             'created_at': post.created_at,
             'updated_at': post.updated_at,
-            'media': [],
+            'media': media_urls,
         }
-        return JsonResponse(postData, status=204)
 
-    if response.status_code == 500:
-        return HttpResponse({"error": "Internal Server Error"}, status=500)
+        return JsonResponse(postData, status=200)
 
-    media_urls = response.json()
+    except Http404:
+        return HttpResponse({"error": "Post not found"}, status=404)
 
-    postData = {
-        'id': post.id,
-        'caption': post.caption,
-        'username': post.username,
-        'created_at': post.created_at,
-        'updated_at': post.updated_at,
-        'media': media_urls,
-    }
+#TODO
+@api_view(['GET'])
+def manyPosts(request):
 
-    return JsonResponse(postData, status=200)
+    return JsonResponse(list(Post.objects.all()))
