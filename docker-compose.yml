@@ -1,5 +1,3 @@
-version: '3.8'
-
 name: post-microservice
 
 services:
@@ -15,11 +13,16 @@ services:
       POSTGRES_PORT: 5443
 
     ports:
-      - "5443:5443"
+      - "5443:5432"
     networks:
       - app_network
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postsuser -d postsdb -h posts_db -p 5432"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   posts_microservice:
     build:
@@ -29,13 +32,16 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - posts_db
+      posts_db:
+        condition: service_healthy
+    links:
+      - posts_db:posts_db
     environment:
       POSTGRES_USER: postsuser
       POSTGRES_PASSWORD: postspw
       POSTGRES_DB: postsdb
       POSTGRES_HOST: posts_db
-      POSTGRES_PORT: 5443
+      POSTGRES_PORT: 5432
     networks:
       - app_network
 

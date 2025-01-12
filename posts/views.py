@@ -23,38 +23,53 @@ def apiHandler(request, id):
 
 @api_view(['POST'])
 def newPost(request):
-    body_unicode = request.body.decode('utf-8')
-    body = json.loads(body_unicode)
-    media_urls = body['media_urls'] #was kriege ich genau? json oder nur die url?
+    content = request.data.get('content')
+    caption = request.data.get('caption')
+    user_id = request.data.get('user_id')
+    username = request.data.get('username')
+    media_data = request.data.get('media')
+
+    media = []
     post_response = None
 
-    payload = {
-        "media": media_urls
-    }
+    if media_data and media_data != []:
+        payload = {"media": media_data}
+        try:
+            post_response = requests.post("/media", json=payload, timeout=5)
+            post_response.raise_for_status()
+            media_json = post_response.json()
+            media = media_json["IDs"]
 
-    try:
-        post_response = requests.post("/media/", json=payload, timeout=5)
-        post_response.raise_for_status()
-        media = post_response.json()
+        except requests.exceptions.HTTPError as e:
+            status_code = post_response.status_code if post_response else 500
+            return HttpResponse({"error": str(e)}, status=status_code)
+        except requests.exceptions.RequestException as e:
+            return HttpResponse({"error": str(e)}, status=500)
 
-    except requests.exceptions.HTTPError as e:
-        return HttpResponse({"error": str(e)}, status=post_response.status_code)
-    except requests.exceptions.RequestException as e:
-        return HttpResponse({"error": str(e)}, status=post_response.status_code)
-
-    #kriege ich user_id vom frontend? von users?
-    post = Post.objects.create(caption=body['caption'], content=body['content'], username=body['username'],
-                        user_id=body['user_id'], created_at=datetime.now(), updated_at=datetime.now(), media=media)
+    post = Post.objects.create(caption=caption, content=content, username=username,
+                        user_id=user_id, created_at=datetime.now(), updated_at=datetime.now(), media=media)
 
     return JsonResponse({'message': 'Post created', 'post_id': str(post.post_id)}, status=200)
 
 def deletePost(request, id):
     try:
         post = get_object_or_404(Post, id=id)
-        response = requests.delete(f'/media/{post.media}', json=post.media) #todo auf request einigen
 
-        if response.status_code == 500:
-            return HttpResponse("error: internal server error", status=500)
+        for media in post.media:
+            media_response = requests.delete(f'/media/{media}')
+
+            if media_response.status_code == 500:
+                return HttpResponse("error: internal server error", status=500)
+
+        reactions_response = requests.delete(f'/interactions/{post.post_id}/reactions')
+
+        if reactions_response.status_code == 404:
+            return HttpResponse("error with deleting the reactions", status=404)
+
+        comments_response = requests.delete(f'/comments/{post.post_id}/comments')
+
+        if comments_response.status_code == 404:
+            return HttpResponse("error with deleting the comments", status=404)
 
         post.delete()
         return HttpResponse('post deleted', status=200)
@@ -91,16 +106,28 @@ def updatePost(request, id):
     return JsonResponse(updated_fields, status=200)
 
 
+def getMedia(post):
+    media_urls = []
+    for media in post.media:
+        response = requests.get(f'/media/{media}')
+
+        if response.status_code != 200:
+            return response.status_code
+
+        media_urls.append(response.json())
+
+    return media_urls
+
 def getPosts(request, id):
     try:
         post = get_object_or_404(Post, id=id)
 
-        response = requests.get(f"/media/{post.media}")
+        media_urls = getMedia(post)
 
-        if response.status_code == 400:
+        if media_urls == 400:
             return HttpResponse({"error": "Bad request, invalid media ID"}, status=400)
 
-        if response.status_code == 404:
+        if media_urls == 404:
             postData = {
                 'id': post.id,
                 'caption': post.caption,
@@ -113,10 +140,8 @@ def getPosts(request, id):
             }
             return JsonResponse(postData, status=204)
 
-        if response.status_code == 500:
-            return HttpResponse({"error": "Internal Server Error"}, status=500)
-
-        media_urls = response.json()
+        if media_urls == 500:
+            return HttpResponse({"error": "Internal server error"}, status=500)
 
         postData = {
             'post_id': post.id,
@@ -134,8 +159,44 @@ def getPosts(request, id):
     except Http404:
         return HttpResponse({"error": "Post not found"}, status=404)
 
-#TODO
 @api_view(['GET'])
-def manyPosts(request):
+def userPosts(request, id):
+    posts = Post.objects.filter(user_id=id)
 
+    if not posts.exists():
+            return JsonResponse({"message": "No posts found for this user"}, status=404)
+
+    post_list = []
+
+    for post in posts:
+        media_response = getMedia(post)
+
+        if media_response == 400 or media_response == 404 or media_response == 500:
+            post_data = {
+                "post_id": post.id,
+                "caption": post.caption,
+                "content": post.content,
+                "username": post.username,
+                "user_id": post.user_id,
+                "created_at": post.created_at,
+                "updated_at": post.updated_at,
+                "media": [],
+            }
+        else:
+            post_data = {
+                "post_id": post.id,
+                "caption": post.caption,
+                "content": post.content,
+                "username": post.username,
+                "user_id": post.user_id,
+                "created_at": post.created_at,
+                "updated_at": post.updated_at,
+                "media": media_response,
+            }
+        post_list.append(post_data)
+
+    return JsonResponse(post_list, status=200)
+
+@api_view(['GET'])
+def allPosts(request):
     return JsonResponse(list(Post.objects.all()))
