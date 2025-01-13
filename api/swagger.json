@@ -3,28 +3,21 @@
   "info": {
     "title": "Post Microservice API",
     "version": "1.0.0",
-    "description": "API documentation for the Post Microservice."
+    "description": "API for managing posts."
   },
-  "servers": [
-    {
-      "url": "http://localhost:8000",
-      "description": "Local server"
-    }
-  ],
   "paths": {
     "/posts/{id}": {
       "get": {
-        "summary": "Retrieve a specific post by ID",
-        "operationId": "getPost",
+        "summary": "Retrieve a post by ID",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string"
             },
-            "description": "ID of the post to retrieve"
+            "description": "The ID of the post to retrieve."
           }
         ],
         "responses": {
@@ -33,17 +26,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "post_id": { "type": "integer" },
-                    "caption": { "type": "string" },
-                    "content": { "type": "string" },
-                    "username": { "type": "string" },
-                    "user_id": { "type": "integer" },
-                    "created_at": { "type": "string", "format": "date-time" },
-                    "updated_at": { "type": "string", "format": "date-time" },
-                    "media": { "type": "array", "items": { "type": "string" } }
-                  }
+                  "$ref": "#/components/schemas/Post"
                 }
               }
             }
@@ -57,17 +40,16 @@
         }
       },
       "delete": {
-        "summary": "Delete a specific post by ID",
-        "operationId": "deletePost",
+        "summary": "Delete a post by ID",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string"
             },
-            "description": "ID of the post to delete"
+            "description": "The ID of the post to delete."
           }
         ],
         "responses": {
@@ -83,17 +65,16 @@
         }
       },
       "patch": {
-        "summary": "Update a specific post by ID",
-        "operationId": "updatePost",
+        "summary": "Update a post by ID",
         "parameters": [
           {
             "name": "id",
             "in": "path",
             "required": true,
             "schema": {
-              "type": "integer"
+              "type": "string"
             },
-            "description": "ID of the post to update"
+            "description": "The ID of the post to update."
           }
         ],
         "requestBody": {
@@ -102,11 +83,7 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {
-                  "caption": { "type": "string" },
-                  "content": { "type": "string" },
-                  "media": { "type": "array", "items": { "type": "string" } }
-                }
+                "additionalProperties": true
               }
             }
           }
@@ -118,7 +95,9 @@
               "application/json": {
                 "schema": {
                   "type": "array",
-                  "items": { "type": "string" }
+                  "items": {
+                    "type": "string"
+                  }
                 }
               }
             }
@@ -135,21 +114,12 @@
     "/posts": {
       "post": {
         "summary": "Create a new post",
-        "operationId": "createPost",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "type": "object",
-                "properties": {
-                  "caption": { "type": "string" },
-                  "content": { "type": "string" },
-                  "username": { "type": "string" },
-                  "user_id": { "type": "integer" },
-                  "media_urls": { "type": "array", "items": { "type": "string" } }
-                },
-                "required": ["caption", "content", "username", "user_id", "media_urls"]
+                "$ref": "#/components/schemas/NewPost"
               }
             }
           }
@@ -162,8 +132,12 @@
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "message": { "type": "string" },
-                    "post_id": { "type": "integer" }
+                    "message": {
+                      "type": "string"
+                    },
+                    "post_id": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -173,6 +147,83 @@
             "description": "Internal server error"
           }
         }
+      }
+    },
+    "/user/{id}/posts": {
+      "get": {
+        "summary": "Retrieve all posts by a user",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "The ID of the user whose posts are to be retrieved."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posts retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No posts found for the user"
+          },
+          "500": {
+            "description": "Internal server error"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Post": {
+        "type": "object",
+        "properties": {
+          "post_id": { "type": "string" },
+          "caption": { "type": "string" },
+          "content": { "type": "string" },
+          "username": { "type": "string" },
+          "user_id": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "updated_at": { "type": "string", "format": "date-time" },
+          "media": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "url": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "NewPost": {
+        "type": "object",
+        "properties": {
+          "content": { "type": "string" },
+          "caption": { "type": "string" },
+          "user_id": { "type": "string" },
+          "username": { "type": "string" },
+          "media": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["content", "caption", "user_id", "username"]
       }
     }
   }
