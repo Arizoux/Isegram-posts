@@ -149,7 +149,7 @@
         }
       }
     },
-    "/user/{id}/posts": {
+    "/posts/users/{id}": {
       "get": {
         "summary": "Retrieve all posts by a user",
         "parameters": [

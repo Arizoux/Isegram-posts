@@ -78,7 +78,6 @@ def deletePost(request, id):
         return HttpResponse({"error": "Post not found"}, status=404)
 
 
-#TODO !!!!!!!!
 def updatePost(request, id):
     post = get_object_or_404(Post, id=id)
     body_unicode = request.body.decode('utf-8')
@@ -87,12 +86,7 @@ def updatePost(request, id):
 
     for key, value in body.items():
         if key == "media":
-            current_media = post.media
-            current_media.update(value)
-            #TODO send to media
-
-            setattr(post, key, current_media)
-            updated_fields.append(key)
+            continue
 
         elif hasattr(post, key):
             setattr(post, key, value)
