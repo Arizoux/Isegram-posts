@@ -8,6 +8,10 @@ from rest_framework.decorators import api_view
 
 from posts.models import Post
 
+# Neue Funktion hinzugefügt
+@api_view(['GET'])
+def health_check(request):
+    return JsonResponse({"message": "Post Service running!"}, status=200)
 
 @api_view(['DELETE', 'PATCH', 'GET'])
 def apiHandler(request, id):
@@ -19,7 +23,6 @@ def apiHandler(request, id):
 
     elif request.method == 'GET':
         getPosts(request, id)
-
 
 @api_view(['POST'])
 def newPost(request):
@@ -167,7 +170,7 @@ def userPosts(request, id):
 
         if media_response == 400 or media_response == 404 or media_response == 500:
             post_data = {
-                "post_id": post.id,
+                "post_id": post.post_id,
                 "caption": post.caption,
                 "content": post.content,
                 "username": post.username,
@@ -178,7 +181,7 @@ def userPosts(request, id):
             }
         else:
             post_data = {
-                "post_id": post.id,
+                "post_id": post.post_id,
                 "caption": post.caption,
                 "content": post.content,
                 "username": post.username,
@@ -189,7 +192,7 @@ def userPosts(request, id):
             }
         post_list.append(post_data)
 
-    return JsonResponse(post_list, status=200)
+    return JsonResponse(post_list, status=200, safe=False)
 
 @api_view(['GET'])
 def allPosts(request):

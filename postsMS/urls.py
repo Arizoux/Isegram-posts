@@ -25,4 +25,5 @@ urlpatterns = [
     path('posts/<uuid:id>/', views.apiHandler, name='getOrUpdateOrDeletePost'),
     path('posts/users/<uuid:id>/', views.userPosts),
     path('posts/', views.allPosts),
+    path('', views.health_check, name='healthCheck'),
 ]
