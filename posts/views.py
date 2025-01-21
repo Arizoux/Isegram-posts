@@ -5,8 +5,12 @@ from django.shortcuts import get_object_or_404
 import json, requests
 from django.http import HttpResponse, JsonResponse, Http404
 from rest_framework.decorators import api_view
+from requests_toolbelt.multipart.encoder import MultipartEncoder
+import os
 
 from posts.models import Post
+
+MEDIA_SERVICE_URL = os.getenv("MEDIA_SERVICE_URL")
 
 # Neue Funktion hinzugefügt
 @api_view(['GET'])
@@ -30,29 +34,63 @@ def newPost(request):
     caption = request.data.get('caption')
     user_id = request.data.get('user_id')
     username = request.data.get('username')
-    media_data = request.data.get('media')
+    
+    # Sammle alle Mediendateien
+    media_files = []
+    i = 0
+    while f'media[{i}].file' in request.FILES:
+        file_obj = request.FILES[f'media[{i}].file']
+        filename = request.data.get(f'media[{i}].filename')
+        content_type = request.data.get(f'media[{i}].content_type')
+        
+        media_files.append({
+            'file': file_obj,
+            'filename': filename,
+            'content_type': content_type
+        })
+        i += 1
 
     media = []
-    post_response = None
-
-    if media_data and media_data != []:
-        payload = {"media": media_data}
+    if media_files:
+        # Erstelle multipart request für den media service
+        media_request = MultipartEncoder(
+            fields={
+                f'profile_picture_{user_id}': (
+                    media_files[0]['filename'],
+                    media_files[0]['file'],
+                    media_files[0]['content_type']
+                )
+            }
+        )
+        
         try:
-            post_response = requests.post("/media", json=payload, timeout=5)
+            post_response = requests.post(
+                f'{MEDIA_SERVICE_URL}/media',
+                data=media_request,
+                headers={'Content-Type': media_request.content_type},
+                timeout=5
+            )
             post_response.raise_for_status()
             media_json = post_response.json()
             media = media_json["IDs"]
-
         except requests.exceptions.HTTPError as e:
             status_code = post_response.status_code if post_response else 500
             return HttpResponse({"error": str(e)}, status=status_code)
         except requests.exceptions.RequestException as e:
             return HttpResponse({"error": str(e)}, status=500)
 
-    post = Post.objects.create(caption=caption, content=content, username=username,
-                        user_id=user_id, created_at=datetime.now(), updated_at=datetime.now(), media=media)
-
+    post = Post.objects.create(
+        caption=caption,
+        content=content,
+        username=username,
+        user_id=user_id,
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        media=media
+    )
+    
     return JsonResponse({'message': 'Post created', 'post_id': str(post.post_id)}, status=200)
+
 
 def deletePost(request, id):
     try:
@@ -106,7 +144,7 @@ def updatePost(request, id):
 def getMedia(post):
     media_urls = []
     for media in post.media:
-        response = requests.get(f'/media/{media}')
+        response = requests.get(f'{MEDIA_SERVICE_URL}/media/{media}')
 
         if response.status_code != 200:
             return response.status_code
