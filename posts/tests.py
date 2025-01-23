@@ -1,120 +1,101 @@
 import json
-import requests
+
+from django.http.response import JsonResponse
 from django.test import TestCase, Client
+from django.test.client import RequestFactory
 from django.urls import reverse
 from unittest.mock import patch, Mock
 from posts.models import Post
 from datetime import datetime
+import uuid
 
 
-class NewPostViewTest(TestCase):
-    def setUp(self):
-        self.client = Client()
-        self.url = reverse('newPost')
-        self.valid_data = {
-            "content": "This is a test post",
-            "caption": "Test Caption",
-            "user_id": "17264947dh3734",
-            "username": "testuser",
-            "media": None
-        }
-
-    @patch('requests.post')
-    def test_new_post_with_empty_media(self, mock_post):
-        mock_post.return_value.status_code = 200
-        mock_post.return_value.json.return_value = {"IDs": []}
-
-        response = self.client.post(self.url, data=self.valid_data, content_type='application/json')
-
-        print("Response from newPost function:", response.content)
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn('post_id', response.json())
-
-        mock_post.assert_not_called()
-
-        self.assertEqual(Post.objects.count(), 1)
-        post = Post.objects.first()
-        self.assertEqual(post.content, self.valid_data['content'])
-        self.assertEqual(post.caption, self.valid_data['caption'])
-        self.assertEqual(post.username, self.valid_data['username'])
-        self.assertEqual(post.user_id, self.valid_data['user_id'])
-        self.assertEqual(post.media, [])
-
-
-
-class GetPostsViewTest(TestCase):
+class TestViews(TestCase):
     def setUp(self):
         self.client = Client()
         self.post = Post.objects.create(
-            id="1",
-            content="This is a test post",
             caption="Test Caption",
-            username="testuser",
+            content="This is a test post",
             user_id="1",
-            media=["media_id_1", "media_id_2"],
-            created_at="2023-01-01T00:00:00Z",
-            updated_at="2023-01-01T00:00:00Z"
+            username="testuser",
+            media=[]
         )
-        self.url = reverse('getOrUpdateOrDeletePost', kwargs={'id': self.post.id})
+        self.post2 = Post.objects.create(
+            caption="Test Caption2",
+            content="This is a test post2",
+            user_id="2",
+            username="testuser",
+            media=[]
+        )
+        self.get_url = reverse('getPost', args=[self.post.post_id])
+        self.update_url = reverse('updatePost', args=[self.post.post_id])
+        self.delete_url = reverse('deletePost', args=[self.post.post_id])
+        self.user_url = reverse('getUserPosts', args=[self.post.user_id])
 
-    @patch('requests.get')
-    def test_get_post_with_valid_media(self, mock_get):
-        mock_get.side_effect = [
-            MockResponse({"url": "http://example.com/media/image1.jpg", "type": "image"}, 200),
-            MockResponse({"url": "http://example.com/media/image2.jpg", "type": "image"}, 200)
-        ]
 
-        response = self.client.get(self.url)
+    def test_update_view(self):
+        response = self.client.patch(
+            self.update_url,
+            data=json.dumps({
+                "content": "This is a test post updated",
+                "caption": "Updated Caption",
+                "user_id": "3"
+            }),
+            content_type="application/json"
+        )
+
+        self.post.refresh_from_db()
+        print(response.content)
+        self.assertEqual(response.status_code, 200)
+        self.assertEquals("This is a test post updated", self.post.content)
+        self.assertEquals("Updated Caption", self.post.caption)
+        self.assertEquals("3", self.post.user_id)
+        self.assertEquals(datetime.now(), self.post.updated_at)
+
+
+    def test_update_wrong_values(self):
+        response = self.client.patch(
+            self.update_url,
+            data=json.dumps({
+                'name': "felix"
+            })
+        )
+
+        self.post.refresh_from_db()
+        self.assertEqual(response.status_code, 403)
+
+
+    def test_update_wrong_post_id(self):
+        response = self.client.patch(
+            reverse('updatePost', args=["ab9cd5a2-9a6e-4566-9adf-a0ef4ab31834"]),
+            data=json.dumps({})
+        )
+        self.post.refresh_from_db()
+        self.assertEqual(response.status_code, 404)
+
+
+    def test_get_view(self):
+
+        response = self.client.get(self.get_url)
+        print(response.json())
         self.assertEqual(response.status_code, 200)
 
-        response_data = response.json()
-        self.assertEqual(response_data['post_id'], self.post.id)
-        self.assertEqual(response_data['content'], self.post.content)
-        self.assertEqual(response_data['caption'], self.post.caption)
-        self.assertEqual(response_data['media'], [
-            {"url": "http://example.com/media/image1.jpg", "type": "image"},
-            {"url": "http://example.com/media/image2.jpg", "type": "image"}
-        ])
 
-    @patch('requests.get')  # Mock the media service
-    def test_get_post_with_invalid_media(self, mock_get):
-        mock_get.return_value = MockResponse({}, 400)
+    @patch('posts.views.requests.delete')
+    @patch('posts.views.get_object_or_404')
+    def test_delete_post_success(self, mock_get_object, mock_requests_delete):
+        mock_get_object.return_value = self.post
 
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 400)
-        self.assertEqual(response.json(), {"error": "Bad request, invalid media ID"})
+        mock_media_response = Mock()
+        mock_media_response.status_code = 200
+        mock_requests_delete.return_value = mock_media_response
 
-    @patch('requests.get')
-    def test_get_post_with_not_found_media(self, mock_get):
-        mock_get.return_value = MockResponse({}, 404)
+        response = self.client.delete(self.delete_url)
 
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('post deleted', response.content.decode())
+        self.assertEquals(Post.objects.count(), 1)
 
-        response_data = response.json()
-        self.assertEqual(response_data['media'], None)
-
-    @patch('requests.get')
-    def test_get_post_with_internal_server_error_media(self, mock_get):
-        mock_get.return_value = MockResponse({}, 500)
-
-        response = self.client.get(self.url)
-        self.assertEqual(response.status_code, 500)
-        self.assertEqual(response.json(), {"error": "Internal server error"})
-
-    def test_get_post_not_found(self):
-        url = reverse('getOrUpdateOrDeletePost', kwargs={'id': 999})
-        response = self.client.get(url)
-        self.assertEqual(response.status_code, 404)
-        self.assertEqual(response.json(), {"error": "Post not found"})
-
-
-class MockResponse:
-    """Helper class to mock requests responses."""
-    def __init__(self, json_data, status_code):
-        self.json_data = json_data
-        self.status_code = status_code
-
-    def json(self):
-        return self.json_data
+        post_exists = Post.objects.filter(post_id=self.post.post_id).exists()
+        self.assertFalse(post_exists)
+        print(Post.objects.all())
