@@ -199,7 +199,7 @@ def userPosts(request, user_id):
     #iterate through the posts and get the media data
     for post in posts:
         media_data = {
-            'media_ids': post.media_ids
+            'media_ids': post.media
         }
         response = requests.get(f'{MEDIA_SERVICE_URL}/media/', params=media_data)
         media_json = response.json()

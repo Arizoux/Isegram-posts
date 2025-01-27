@@ -15,7 +15,7 @@ services:
     ports:
       - "5443:5432"
     networks:
-      - shared-network
+      - internal
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -42,12 +42,19 @@ services:
       POSTGRES_DB: postsdb
       POSTGRES_HOST: posts_db
       POSTGRES_PORT: 5432
+      MEDIA_SERVICE_URL: http://media-service:8006
+      INTERACTIONS_SERVICE_URL: http://interactions-service:8005
+
     networks:
       - shared-network
+      - internal
 
 networks:
+  internal:
+    driver: bridge
   shared-network:
     external: true
 
 volumes:
-  postgres_data: {}
+  postgres_data_posts:
+    driver: local
