@@ -3,16 +3,17 @@
   "info": {
     "title": "Post Microservice API",
     "version": "1.0.0",
-    "description": "API documentation for the post microservice."
+    "description": "API for managing posts, including creating, updating, retrieving, and deleting posts."
   },
   "paths": {
-    "/posts/": {
+
+    "/newPost": {
       "post": {
-        "summary": "Create a new post",
+        "summary": "Create a New Post",
         "requestBody": {
           "required": true,
           "content": {
-            "application/json": {
+            "multipart/form-data": {
               "schema": {
                 "type": "object",
                 "properties": {
@@ -20,121 +21,255 @@
                   "caption": { "type": "string" },
                   "user_id": { "type": "string" },
                   "username": { "type": "string" },
-                  "media": { "type": "array", "items": { "type": "Files" } }
+                  "media": { "type": "array", "items": { "type": "string", "format": "binary" } }
                 },
-                "required": ["content", "caption", "user_id", "username"]
+                "required": ["user_id", "username"]
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Post created successfully." },
-          "400": { "description": "Missing or invalid data." },
-          "500": { "description": "Internal server error." }
+          "200": {
+            "description": "Post created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "post_id": { "type": "string", "format": "uuid" }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid input data."
+          },
+          "500": {
+            "description": "Media service error."
+          }
         }
       }
     },
-    "/posts/delete/{post_id}/": {
+    "/deletePost/{post_id}": {
       "delete": {
-        "summary": "Delete a post by ID",
+        "summary": "Delete a Post",
         "parameters": [
           {
             "name": "post_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "Post deleted successfully." },
-          "404": { "description": "Post not found." },
-          "500": { "description": "Internal server error during deletion." }
-        }
-      }
-    },
-    "/posts/get/{post_id}/": {
-      "get": {
-        "summary": "Retrieve a post by ID",
-        "parameters": [
-          {
-            "name": "post_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+          "200": {
+            "description": "Post deleted successfully."
+          },
+          "404": {
+            "description": "Post not found."
+          },
+          "500": {
+            "description": "Error deleting media or interactions."
           }
-        ],
-        "responses": {
-          "200": { "description": "Post retrieved successfully." },
-          "204": { "description": "No media found for the post." },
-          "400": { "description": "Invalid media ID." },
-          "404": { "description": "Post not found." },
-          "500": { "description": "Internal server error." }
         }
       }
     },
-    "/posts/update/{post_id}/": {
+    "/updatePost/{post_id}": {
       "patch": {
-        "summary": "Update a post by ID",
+        "summary": "Update a Post",
         "parameters": [
           {
             "name": "post_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string", "format": "uuid" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "requestBody": {
-          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": { "type": "string" }
+                "properties": {
+                  "content": { "type": "string" },
+                  "caption": { "type": "string" }
+                },
+                "required": []
               }
             }
           }
         },
         "responses": {
-          "200": { "description": "Post updated successfully." },
-          "403": { "description": "A requested field to update was not found." },
-          "404": { "description": "Post not found." }
+          "200": {
+            "description": "Post updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "content": { "type": "string" },
+                    "caption": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Post not found."
+          },
+          "403": {
+            "description": "Invalid field requested for update."
+          }
         }
       }
     },
-    "/posts/users/{user_id}/": {
+    "/getPost/{post_id}": {
       "get": {
-        "summary": "Retrieve all posts by a user ID",
+        "summary": "Get a Post",
         "parameters": [
           {
-            "name": "user_id",
+            "name": "post_id",
             "in": "path",
             "required": true,
-            "schema": { "type": "string" }
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
           }
         ],
         "responses": {
-          "200": { "description": "Posts retrieved successfully." },
-          "404": { "description": "No posts found for this user." },
-          "500": { "description": "Internal server error." }
+          "200": {
+            "description": "Post retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "post_id": { "type": "string", "format": "uuid" },
+                    "caption": { "type": "string" },
+                    "content": { "type": "string" },
+                    "username": { "type": "string" },
+                    "user_id": { "type": "string" },
+                    "created_at": { "type": "string", "format": "date-time" },
+                    "updated_at": { "type": "string", "format": "date-time" },
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "MediaId": { "type": "string" },
+                          "FileUrl": { "type": "string", "format": "uri" },
+                          "Width": { "type": "integer" },
+                          "Height": { "type": "integer" },
+                          "FileType": { "type": "string" },
+                          "OriginalFileName": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Post not found."
+          }
         }
       }
-    }
-  },
-  "components": {
-    "schemas": {
-      "Post": {
-        "type": "object",
-        "properties": {
-          "post_id": { "type": "string", "format": "uuid" },
-          "caption": { "type": "string" },
-          "content": { "type": "string" },
-          "username": { "type": "string" },
-          "user_id": { "type": "string" },
-          "created_at": { "type": "string", "format": "date-time" },
-          "updated_at": { "type": "string", "format": "date-time" },
-          "media": { "type": "array", "items": { "type": "string" } }
+    },
+    "/userPosts/{user_id}": {
+  "get": {
+    "summary": "Get Posts by User",
+    "parameters": [
+      {
+        "name": "user_id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
         }
       }
+    ],
+    "responses": {
+      "200": {
+        "description": "User's posts retrieved successfully.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "post_id": { "type": "string", "format": "uuid" },
+                  "caption": { "type": "string" },
+                  "content": { "type": "string" },
+                  "username": { "type": "string" },
+                  "user_id": { "type": "string" },
+                  "created_at": { "type": "string", "format": "date-time" },
+                  "updated_at": { "type": "string", "format": "date-time" },
+                  "media": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "MediaId": { "type": "string" },
+                        "FileUrl": { "type": "string", "format": "uri" },
+                        "Width": { "type": "integer" },
+                        "Height": { "type": "integer" },
+                        "FileType": { "type": "string" },
+                        "OriginalFileName": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "example": [
+              {
+                "post_id": "123e4567-e89b-12d3-a456-426614174000",
+                "caption": "Caption 1",
+                "content": "Content of the first post.",
+                "username": "myusername",
+                "user_id": "123",
+                "created_at": "2025-01-01T12:00:00Z",
+                "updated_at": "2025-01-02T12:00:00Z",
+                "media": [
+                  {
+                    "MediaId": "12345",
+                    "FileUrl": "https://example.com/media/12345",
+                    "Width": 1920,
+                    "Height": 1080,
+                    "FileType": "jpg",
+                    "OriginalFileName": "vacation-photo.jpg"
+                  }
+                ]
+              },
+              {
+                "post_id": "223e4567-e89b-12d3-a456-426614174001",
+                "caption": "Caption 2",
+                "content": "Content of the second post.",
+                "username": "myusername",
+                "user_id": "123",
+                "created_at": "2025-01-03T12:00:00Z",
+                "updated_at": "2025-01-04T12:00:00Z",
+                "media": []
+              }
+            ]
+          }
+        }
+      },
+      "404": {
+        "description": "No posts found for the user."
+      }
     }
+  }
+}
   }
 }
