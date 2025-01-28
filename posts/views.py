@@ -34,7 +34,7 @@ def newPost(request):
     username = request.POST.get('username')
 
     #get the media files
-    media_files = request.FILES.getlist('media')
+    media_files = request.FILES
 
     media = []
     response = None
@@ -45,6 +45,7 @@ def newPost(request):
             response = requests.post(f"{MEDIA_SERVICE_URL}/media", files=media_files)
             response.raise_for_status()
             media = json.loads(response.content)
+            media = media['IDs']
         except requests.HTTPError as e:
             return HttpResponse(f"Media service error: {e}", status=response.status_code)
 
@@ -137,44 +138,42 @@ def getPosts(request, post_id):
         post = get_object_or_404(Post, post_id=post_id) #get post from db with post_id
 
         #send the media ids to the media microservice and recieve a json with all the media data needed for the frontend
-        media_ids = {
-            'media_ids': post.media
-        }
-        response = requests.get(f'{MEDIA_SERVICE_URL}/media/', params=media_ids)
-        media_data = response.json()
+        media_response = None
+        if post.media != []:
 
-        if response.status_code == 400:
-            return HttpResponse({"error": "Bad request, invalid media ID"}, status=400)
+            response = requests.get(
+               f'{MEDIA_SERVICE_URL}/media',
+                data=json.dumps(post.media),
+                headers={'Content-Type': 'application/json'}
+            )
 
-        #if no media was found for the post, return an empty list for media
-        if response.status_code == 404:
-            postData = {
-                'post_id': post.post_id,
-                'caption': post.caption,
-                'content': post.content,
-                'username': post.username,
-                'user_id': post.user_id,
-                'created_at': post.created_at,
-                'updated_at': post.updated_at,
-                'media': []
+            media_json = response.json()
+            media_response = response.status_code
+        
+        if media_response == 400 or media_response == 404 or media_response == 500 or media_response == None:
+            post_data = {
+                "post_id": post.post_id,
+                "caption": post.caption,
+                "content": post.content,
+                "username": post.username,
+                "user_id": post.user_id,
+                "created_at": post.created_at,
+                "updated_at": post.updated_at,
+                "media": [],
             }
-            return JsonResponse(postData, status=204)
+        else:
+            post_data = {
+                "post_id": post.post_id,
+                "caption": post.caption,
+                "content": post.content,
+                "username": post.username,
+                "user_id": post.user_id,
+                "created_at": post.created_at,
+                "updated_at": post.updated_at,
+                "media": media_json,
+            }
 
-        if response.status_code == 500:
-            return HttpResponse({"error": "Internal server error"}, status=500)
-
-        postData = {
-            "post_id": post.post_id,
-            "caption": post.caption,
-            "content": post.content,
-            "username": post.username,
-            "user_id": post.user_id,
-            "created_at": post.created_at,
-            "updated_at": post.updated_at,
-            "media": media_data
-        }
-
-        return JsonResponse(postData, status=200)
+        return JsonResponse(post_data, status=200, safe=False)
         
         
     except Http404:
@@ -198,14 +197,19 @@ def userPosts(request, user_id):
 
     #iterate through the posts and get the media data
     for post in posts:
-        media_data = {
-            'media_ids': post.media
-        }
-        response = requests.get(f'{MEDIA_SERVICE_URL}/media/', params=media_data)
-        media_json = response.json()
-        media_response = response.status_code
+        media_response = None
+        if post.media != []:
 
-        if media_response == 400 or media_response == 404 or media_response == 500:
+            response = requests.get(
+               f'{MEDIA_SERVICE_URL}/media',
+                data=json.dumps(post.media),
+                headers={'Content-Type': 'application/json'}
+            )
+
+            media_json = response.json()
+            media_response = response.status_code
+        
+        if media_response == 400 or media_response == 404 or media_response == 500 or media_response == None:
             post_data = {
                 "post_id": post.post_id,
                 "caption": post.caption,
