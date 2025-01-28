@@ -11,6 +11,7 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     username = models.CharField(max_length=100)
     user_id = models.CharField(max_length=100)
+    tags = models.JSONField(blank=True)
 
     def __str__(self):
         return str(self.post_id)
