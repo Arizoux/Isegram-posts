@@ -4,6 +4,7 @@ from django.shortcuts import get_object_or_404
 import json, requests
 from django.http import HttpResponse, JsonResponse, Http404
 from rest_framework.decorators import api_view
+import jwt
 
 from posts.models import Post
 
@@ -65,7 +66,8 @@ A delete request is also made to the interactions microservice, which handles th
 @api_view(['DELETE'])
 def deletePost(request, post_id):
     try:
-        post = get_object_or_404(Post, post_id=post_id) #get post from db with post_id
+        # get post from db with post_id
+        post = get_object_or_404(Post, post_id=post_id)
 
         for media in post.media:
             #send a delete request for each media id
@@ -127,6 +129,53 @@ def updatePost(request, post_id):
 
 
 """
+This function gets the media data for a post by sending a get request to the media microservice.
+It then builds the post data to be returned as a get response for this microservice.  
+"""
+
+def getData(post):
+    media_response = None
+    media_json = None
+
+    #check if the post has media_ids to send to the media microservice
+    if post.media != []:
+        response = requests.get(
+            f'{MEDIA_SERVICE_URL}/media',
+            data=json.dumps(post.media),
+            headers={'Content-Type': 'application/json'}
+        )
+
+        #parse the response body
+        media_json = response.json()
+        media_response = response.status_code
+
+    if media_response == 200:
+        post_data = {
+            "post_id": post.post_id,
+            "caption": post.caption,
+            "content": post.content,
+            "username": post.username,
+            "user_id": post.user_id,
+            "created_at": post.created_at,
+            "updated_at": post.updated_at,
+            "media": media_json,
+        }
+    else:
+        #if the media microservice returned an error or None, leave the media field as an empty list
+        post_data = {
+            "post_id": post.post_id,
+            "caption": post.caption,
+            "content": post.content,
+            "username": post.username,
+            "user_id": post.user_id,
+            "created_at": post.created_at,
+            "updated_at": post.updated_at,
+            "media": [],
+        }
+
+    return post_data
+
+"""
 This function gets the post data for a given post_id.
 If no media is found or if there was a problem with the media microservice,
 the posts data is returned with no media data and with status code 204.
@@ -135,47 +184,12 @@ the posts data is returned with no media data and with status code 204.
 @api_view(['GET'])
 def getPosts(request, post_id):
     try:
-        post = get_object_or_404(Post, post_id=post_id) #get post from db with post_id
-
-        #send the media ids to the media microservice and recieve a json with all the media data needed for the frontend
-        media_response = None
-        if post.media != []:
-
-            response = requests.get(
-               f'{MEDIA_SERVICE_URL}/media',
-                data=json.dumps(post.media),
-                headers={'Content-Type': 'application/json'}
-            )
-
-            media_json = response.json()
-            media_response = response.status_code
-        
-        if media_response == 400 or media_response == 404 or media_response == 500 or media_response == None:
-            post_data = {
-                "post_id": post.post_id,
-                "caption": post.caption,
-                "content": post.content,
-                "username": post.username,
-                "user_id": post.user_id,
-                "created_at": post.created_at,
-                "updated_at": post.updated_at,
-                "media": [],
-            }
-        else:
-            post_data = {
-                "post_id": post.post_id,
-                "caption": post.caption,
-                "content": post.content,
-                "username": post.username,
-                "user_id": post.user_id,
-                "created_at": post.created_at,
-                "updated_at": post.updated_at,
-                "media": media_json,
-            }
+        #get post from db with post_id
+        post = get_object_or_404(Post, post_id=post_id)
+        post_data = getData(post)
 
         return JsonResponse(post_data, status=200, safe=False)
-        
-        
+
     except Http404:
         return HttpResponse({"error": "Post not found"}, status=404)
 
@@ -188,49 +202,18 @@ A JSON containing all posts from the user is returned.
 
 @api_view(['GET'])
 def userPosts(request, user_id):
-    posts = Post.objects.filter(user_id=user_id) #get all posts from db with user_id
 
+    # get all posts from db with user_id
+    posts = Post.objects.filter(user_id=user_id)
+    post_list = []
+
+    #check if the user has any posts
     if not posts.exists():
         return JsonResponse({"message": "No posts found for this user"}, status=404)
 
-    post_list = []
-
     #iterate through the posts and get the media data
     for post in posts:
-        media_response = None
-        if post.media != []:
-
-            response = requests.get(
-               f'{MEDIA_SERVICE_URL}/media',
-                data=json.dumps(post.media),
-                headers={'Content-Type': 'application/json'}
-            )
-
-            media_json = response.json()
-            media_response = response.status_code
-        
-        if media_response == 400 or media_response == 404 or media_response == 500 or media_response == None:
-            post_data = {
-                "post_id": post.post_id,
-                "caption": post.caption,
-                "content": post.content,
-                "username": post.username,
-                "user_id": post.user_id,
-                "created_at": post.created_at,
-                "updated_at": post.updated_at,
-                "media": [],
-            }
-        else:
-            post_data = {
-                "post_id": post.post_id,
-                "caption": post.caption,
-                "content": post.content,
-                "username": post.username,
-                "user_id": post.user_id,
-                "created_at": post.created_at,
-                "updated_at": post.updated_at,
-                "media": media_json,
-            }
+        post_data = getData(post)
         post_list.append(post_data)
 
     return JsonResponse(post_list, status=200, safe=False)
