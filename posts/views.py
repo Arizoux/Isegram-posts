@@ -4,7 +4,6 @@ from django.shortcuts import get_object_or_404
 import json, requests
 from django.http import HttpResponse, JsonResponse, Http404
 from rest_framework.decorators import api_view
-import jwt
 
 from posts.models import Post
 
@@ -174,6 +173,7 @@ def getData(post):
         }
 
     return post_data
+
 
 """
 This function gets the post data for a given post_id.
