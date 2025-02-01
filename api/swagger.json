@@ -7,6 +7,67 @@
   },
   "paths": {
 
+    "/posts/feed/": {
+      "get": {
+        "summary": "Get Feed Posts",
+        "parameters": [
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "description": "Optional list of tags to filter posts by. If omitted, returns the latest 200 posts."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Posts retrieved successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "post_id": { "type": "string", "format": "uuid" },
+                      "caption": { "type": "string" },
+                      "content": { "type": "string" },
+                      "username": { "type": "string" },
+                      "user_id": { "type": "string" },
+                      "created_at": { "type": "string", "format": "date-time" },
+                      "updated_at": { "type": "string", "format": "date-time" },
+                      "media": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "MediaId": { "type": "string" },
+                            "FileUrl": { "type": "string", "format": "uri" },
+                            "Width": { "type": "integer" },
+                            "Height": { "type": "integer" },
+                            "FileType": { "type": "string" },
+                            "OriginalFileName": { "type": "string" }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Returned the first 200 posts because no tags where given"
+          },
+          "405": {
+            "description": "No posts found for the given tags."
+          }
+        }
+      }
+    },
     "/posts/": {
       "post": {
         "summary": "Create a New Post",
