@@ -7,7 +7,7 @@
   },
   "paths": {
 
-    "/newPost": {
+    "/posts/": {
       "post": {
         "summary": "Create a New Post",
         "requestBody": {
@@ -51,7 +51,7 @@
         }
       }
     },
-    "/deletePost/{post_id}": {
+    "/posts/delete/{post_id}/": {
       "delete": {
         "summary": "Delete a Post",
         "parameters": [
@@ -78,7 +78,7 @@
         }
       }
     },
-    "/updatePost/{post_id}": {
+    "/posts/update/{post_id}/": {
       "patch": {
         "summary": "Update a Post",
         "parameters": [
@@ -130,7 +130,7 @@
         }
       }
     },
-    "/getPost/{post_id}": {
+    "/posts/get/{post_id}/": {
       "get": {
         "summary": "Get a Post",
         "parameters": [
@@ -184,7 +184,7 @@
         }
       }
     },
-    "/userPosts/{user_id}": {
+    "/posts/users/{user_id}/": {
   "get": {
     "summary": "Get Posts by User",
     "parameters": [
