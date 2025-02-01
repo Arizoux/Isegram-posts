@@ -220,5 +220,30 @@ def userPosts(request, user_id):
 
 
 @api_view(['GET'])
-def allPosts(request):
-    return JsonResponse(list(Post.object.all()))
+def getFeedPosts(request):
+    #extract tags from the request from the request query
+    tags = request.query_params.getlist('tags', [])
+    post_list = []
+
+    if not tags:
+        posts = Post.object.all()[:200]
+
+        for post in posts:
+            post_data = getData(post)
+            post_list.append(post_data)
+
+        #return the first 200 posts
+        return JsonResponse(post_list, status=201, safe=False)
+
+    #gets all the posts that contain tags from the request query list "tags"
+    posts = Post.objects.filter(tags__overlap=tags)
+
+    if not posts.exists():
+        return JsonResponse({"message": "No posts found for the given tags"}, status=405)
+
+    #iterate through all the posts that contain the tags and append them to a list
+    for post in posts:
+        post_data = getData(post)
+        post_list.append(post_data)
+
+    return JsonResponse(post_list, status=200, safe=False)

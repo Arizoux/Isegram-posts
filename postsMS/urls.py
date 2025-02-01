@@ -26,6 +26,6 @@ urlpatterns = [
     path('posts/get/<uuid:post_id>/', views.getPosts, name='getPost'),
     path('posts/update/<uuid:post_id>/', views.updatePost, name='updatePost'),
     path('posts/users/<str:user_id>/', views.userPosts, name='getUserPosts'),
-    path('posts/', views.allPosts),
+    path('posts/feed/', views.getFeedPosts, name='getFeedPosts'),
     path('', views.health_check, name='healthCheck'),
 ]
