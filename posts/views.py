@@ -226,7 +226,7 @@ def getFeedPosts(request):
     post_list = []
 
     if not tags:
-        posts = Post.object.all()[:200]
+        posts = Post.objects.all()[:200]
 
         for post in posts:
             post_data = getData(post)
