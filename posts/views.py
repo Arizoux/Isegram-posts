@@ -65,6 +65,8 @@ A delete request is also made to the interactions microservice, which handles th
 @api_view(['DELETE'])
 def deletePost(request, post_id):
     try:
+        token = request.headers.get("Authorization")
+
         # get post from db with post_id
         post = get_object_or_404(Post, post_id=post_id)
 
@@ -75,17 +77,11 @@ def deletePost(request, post_id):
             if media_response.status_code == 500:
                 return HttpResponse("error: internal server error", status=500)
 
-        #delete the reactions
-        reactions_response = requests.delete(f'{INTERACTIONS_SERVICE_URL}/interactions/{post.post_id}/reactions')
+        #delete the interactions
+        interactions_response = requests.delete(f'{INTERACTIONS_SERVICE_URL}/internal/post/{post.post_id}', headers={'Authorization': token})
 
-        if reactions_response.status_code == 404:
-            return HttpResponse("error with deleting the reactions", status=404)
-
-        #delete the comments
-        comments_response = requests.delete(f'{INTERACTIONS_SERVICE_URL}/comments/{post.post_id}/comments')
-
-        if comments_response.status_code == 404:
-            return HttpResponse("error with deleting the comments", status=404)
+        if interactions_response.status_code != 200:
+            return HttpResponse("error with deleting the comments", status=interactions_response.status_code)
 
         #delete the post
         post.delete()
